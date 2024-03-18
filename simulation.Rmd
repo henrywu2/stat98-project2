@@ -1,0 +1,36 @@
+---
+title: "STAT 98 Project 2 Simulation"
+author: "Chris Canzano, Victoria Li, and Henry Wu"
+date: "March 17, 2024"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r setup}
+require(mgcv)
+```
+
+```{r}
+N <- 10 # number of trials (change to 10000 or something large once we're ready to go!)
+n <- 100 # sample size
+k <- 2 # number of predictor variables (change to vector ks)
+rhos <- c(0, 0.7, -0.7, 0.99, -0.99) # correlation (temp)
+vars <- c(0.5, 1, 4)
+
+for (rho in rhos) {
+  for (var in vars) {
+    print(paste('Generated dataset: rho = ', rho, ', var = ', var, sep=''))
+    Sigma <- matrix(c(1, rho, rho, 1), 2, 2) # correlation matrix
+    X <- rmvn(n, rep(0, k), Sigma) # generation of multivariate normal data
+    # print(X[1:10,])
+    print(paste('Condition number: ', 1/rcond(t(scale(X)) %*% scale(X))))
+    
+    coefs <- c(2, -1) # coefficient vector
+    epsilon <- rnorm(n, 0, sqrt(var)) # generation of error term
+    y <- X %*% coefs + epsilon # generation of response variable
+    # print(y[1:10])
+  }
+}
+
+```
