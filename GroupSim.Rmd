@@ -7,13 +7,12 @@ output:
   html_notebook: default
 ---
 
-```{r setup}
+```{r simulation}
 library(MASS) # For multivariate normal data generation
 library(mgcv) # Might not be necessary unless specific mgcv functions are used later
 library(pls)
-```
+library(glmnet)
 
-```{r simulation}
 set.seed(98)
 N <- 100  # Number of trials in each configuration for testing
 n <- 100  # Sample size
@@ -59,7 +58,7 @@ for (case in cases) {
     for (var_epsilon in var_epsilons) {
       for (coef_set in seq_along(coef_sets)) {
         # Generate the data
-        # NEED TO INCLUDE TRIALS
+        for (i in 1:N) {
         X <- mvrnorm(n = n, mu = rep(0, k), Sigma = Sigma)
         epsilon <- rnorm(n, 0, sqrt(var_epsilon))
         y <- X %*% coef_sets[[coef_set]] + epsilon
@@ -146,6 +145,7 @@ for (case in cases) {
         
         # Results
         results <- rbind(results, data.frame(method = "PCA", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, Lambda = NA, MSE = MSE, R2 = R2, stringsAsFactors = FALSE))
+        }
       }
     }
   }
