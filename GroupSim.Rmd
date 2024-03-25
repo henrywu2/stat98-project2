@@ -1,0 +1,224 @@
+---
+title: "STAT 98 Project 2 Simulation"
+author: "Chris Canzano, Victoria Li, and Henry Wu"
+date: "March 17, 2024"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r setup}
+library(mgcv) # adds the package for multivariate normal data generation
+```
+
+```{r}
+set.seed(98) # set seed for reproducibility
+N <- 10000 # number of trials in each configuration - reduce this number to like 100 when you do test runs!!
+n <- 100 # sample size
+k <- 4 # number of predictor variables
+cases <- c('treatment', 'control', 'all') # 'all' refers to the configuration with strong multicollinearity
+treatment_rhos <- c(0, 0.7, -0.7, 0.99, -0.99) # correlations in configuration with collinearity between treatment and one control (as well as no collinearity)
+control_rhos <- c(0.99, -0.99) # correlations in configuration with collinearity between two controls
+var_epsilons <- c(1, 25) # variances of error term - let me know if I should change these to be more reasonable (after we do some test runs)
+coef_sets <- list(c(2, 1, 0.5, 0.5), c(2, -1, -0.5, -0.5), c(0.5, 0.5, 1, 2)) # sets of coefficients - let me know if I should change these to be more reasonable (after we do some test runs)
+
+for (case in cases) {
+  if (case == 'treatment') {
+    rhos <- treatment_rhos
+  }
+  else if (case == 'control') {
+    rhos <- control_rhos
+  }
+  else if (case == 'all') {
+    rhos <- c(1) # only one case which does not have variable rhos
+  }
+  
+  for (rho in rhos) {
+    if (case == 'treatment') {
+      Sigma <- matrix(c(1, rho, 0, 0,
+                        rho, 1, 0, 0,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1), 4, 4) # correlation matrix for collinearity between treatment and one control
+    }
+    else if (case == 'control') {
+      Sigma <- matrix(c(1, 0, 0, 0,
+                        0, 1, rho, 0,
+                        0, rho, 1, 0,
+                        0, 0, 0, 1), 4, 4) # correlation matrix for collinearity between two controls
+    }
+    else if (case == 'all') {
+      Sigma <- matrix(c(1, 0.992, 0.621, 0.465,
+                        0.992, 1, 0.604, 0.446,
+                        0.621, 0.604, 1, -0.177,
+                        0.465, 0.446, -0.177, 1), 4, 4) # correlation matrix for strong multicollinearity - based on Longley's economic data
+    }
+    print('Correlation matrix:')
+    print(Sigma)
+    # print(paste('Theoretical condition number:', 1/rcond(Sigma)))
+    for (coefs in coef_sets) {
+      print(paste('Coefficients: [', paste(coefs, collapse=', '), ']', sep=''))
+      for (var_epsilon in var_epsilons) {
+        print(paste('Variance of error term: =', var_epsilon))
+        for (i in 1:N) {
+          X <- rmvn(n, rep(0, k), Sigma) # generation of multivariate normal data
+          # print(X[1:10,]) # first 10 observations of data
+          # print(paste('Condition number:', 1/rcond(t(scale(X)) %*% scale(X)))) # using empirical correlation matrix on standardized data
+          epsilon <- rnorm(n, 0, sqrt(var_epsilon)) # generation of error term
+          y <- X %*% coefs + epsilon # generation of response variable
+          # print(y[1:10]) # first 10 observations of response variable
+        }
+      }
+    }
+  }
+  print('')
+}
+```
+
+```{r}
+library(MASS) # For multivariate normal data generation
+library(mgcv) # Might not be necessary unless specific mgcv functions are used later
+library(pls)
+
+set.seed(98)
+N <- 100  # Number of trials in each configuration for testing
+n <- 100  # Sample size
+k <- 4  # Number of predictor variables
+cases <- c('treatment', 'control', 'all')
+treatment_rhos <- c(0, 0.7, -0.7, 0.99, -0.99)
+control_rhos <- c(0.99, -0.99)
+var_epsilons <- c(1, 25)
+coef_sets <- list(c(2, 1, 0.5, 0.5), c(2, -1, -0.5, -0.5), c(0.5, 0.5, 1, 2))
+
+# Prepare a dataframe to store the results
+results <- data.frame(method = character(), case = character(), rho = numeric(), var_epsilon = numeric(), coef_set = numeric(), R2 = numeric(), Lambda = numeric(), MSE = numeric(), stringsAsFactors = FALSE)
+
+
+# Loop through all configurations
+for (case in cases) {
+  if (case == 'treatment') {
+    rhos <- treatment_rhos
+  } else if (case == 'control') {
+    rhos <- control_rhos
+  } else if (case == 'all') {
+    rhos <- c(1)  # Only one case which does not have variable rhos
+  }
+  
+  for (rho in rhos) {
+    for (var_epsilon in var_epsilons) {
+      for (coef_set in seq_along(coef_sets)) {
+        # Configure the Sigma matrix based on the case
+        if (case == 'treatment') {
+          Sigma <- matrix(c(1, rho, 0, 0,
+                            rho, 1, 0, 0,
+                            0, 0, 1, 0,
+                            0, 0, 0, 1), 4, 4)
+        } else if (case == 'control') {
+          Sigma <- matrix(c(1, 0, 0, 0,
+                            0, 1, rho, 0,
+                            0, rho, 1, 0,
+                            0, 0, 0, 1), 4, 4)
+        } else if (case == 'all') {
+          Sigma <- matrix(c(1, 0.992, 0.621, 0.465,
+                            0.992, 1, 0.604, 0.446,
+                            0.621, 0.604, 1, -0.177,
+                            0.465, 0.446, -0.177, 1), 4, 4)
+        }
+        
+        # Generate the data
+        # NEED TO INCLUDE TRIALS
+        X <- mvrnorm(n = n, mu = rep(0, k), Sigma = Sigma)
+        epsilon <- rnorm(n, 0, sqrt(var_epsilon))
+        y <- X %*% coef_sets[[coef_set]] + epsilon
+        
+        # OLS model
+        fit <- lm(y ~ X)
+        
+        # Calculate R2 and MSE
+        R2 <- summary(fit)$r.squared
+        predictions <- predict(fit, newdata = data.frame(X = X))
+        MSE <- mean((y - predictions)^2)
+        
+        # Results
+        results <- rbind(results, data.frame(method = "OLS", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, R2 = R2, Lambda = NA, MSE = MSE, stringsAsFactors = FALSE))
+        
+        #############
+        
+        # Ridge regression model with cross-validation
+        X_mat <- as.matrix(X) 
+        cv_fit <- cv.glmnet(X_mat, y, alpha = 0)
+        
+        # Extract the optimal lambda value
+        optimal_lambda <- cv_fit$lambda.min
+        
+        # Predict using the optimal lambda
+        predictions <- predict(cv_fit, newx = X_mat, s = "lambda.min")
+        
+        # Calculate MSE
+        MSE <- mean((y - predictions)^2)
+        
+        # Calculate R2
+        SS_res <- sum((y - predictions)^2)
+        SS_tot <- sum((y - mean(y))^2)
+        R2 <- 1 - (SS_res / SS_tot)
+        
+        # Results
+        results <- rbind(results, data.frame(method = "Ridge", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, R2 = R2, Lambda = optimal_lambda, MSE = MSE, stringsAsFactors = FALSE))
+        
+        ########################
+        
+        # LASSO
+        cv_fit_lasso <- cv.glmnet(X_mat, y, alpha = 1)
+        
+        # Extract the optimal lambda value
+        optimal_lambda_lasso <- cv_fit_lasso$lambda.min
+        
+        # Predict using the optimal lambda
+        predictions_lasso <- predict(cv_fit_lasso, newx = X_mat, s = "lambda.min")
+        
+        # Calculate MSE
+        MSE_lasso <- mean((y - predictions_lasso)^2)
+        
+        # Calculate R2
+        SS_res_lasso <- sum((y - predictions_lasso)^2)
+        SS_tot_lasso <- sum((y - mean(y))^2)
+        R2_lasso <- 1 - (SS_res_lasso / SS_tot_lasso)
+        
+        # Results
+        results <- rbind(results, data.frame(method = "LASSO", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, R2 = R2_lasso, Lambda = optimal_lambda_lasso, MSE = MSE_lasso, stringsAsFactors = FALSE))
+        
+        ############################
+        
+        # PCA on the predictor variables
+        pca_result <- prcomp(X, scale. = TRUE)
+        
+        # Determine the number of components to use based on the variance explained criterion
+        explained_variance <- summary(pca_result)$importance[2, ]
+        cumulative_variance <- cumsum(explained_variance)
+        variance_threshold <- 0.85  
+        num_components <- which(cumulative_variance >= variance_threshold)[1]
+        
+        # Regression using the selected principal components
+        # Extract scores for the components used
+        pca_scores <- pca_result$x[, 1:num_components]  
+        fit <- lm(y ~ pca_scores)
+        
+        # Predict and calculate metrics
+        predictions <- predict(fit, newdata = data.frame(pca_scores = pca_scores))
+        MSE <- mean((y - predictions)^2)
+        y_bar <- mean(y)
+        SS_tot <- sum((y - y_bar)^2)
+        SS_res <- sum((y - predictions)^2)
+        R2 <- 1 - SS_res / SS_tot
+        
+        # Results
+        results <- rbind(results, data.frame(method = "PCA", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, Lambda = NA, MSE = MSE, R2 = R2, stringsAsFactors = FALSE))
+      }
+    }
+  }
+}
+```
+
+
+
+
+
