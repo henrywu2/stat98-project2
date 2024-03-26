@@ -59,92 +59,92 @@ for (case in cases) {
       for (coef_set in seq_along(coef_sets)) {
         # Generate the data
         for (i in 1:N) {
-        X <- mvrnorm(n = n, mu = rep(0, k), Sigma = Sigma)
-        epsilon <- rnorm(n, 0, sqrt(var_epsilon))
-        y <- X %*% coef_sets[[coef_set]] + epsilon
-        
-        # OLS model
-        fit <- lm(y ~ X)
-        
-        # Calculate R2 and MSE
-        R2 <- summary(fit)$r.squared
-        predictions <- predict(fit, newdata = data.frame(X = X))
-        MSE <- mean((y - predictions)^2)
-        
-        # Results
-        results <- rbind(results, data.frame(method = "OLS", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, R2 = R2, Lambda = NA, MSE = MSE, stringsAsFactors = FALSE))
-        
-        #############
-        
-        # Ridge regression model with cross-validation
-        X_mat <- as.matrix(X) 
-        cv_fit <- cv.glmnet(X_mat, y, alpha = 0)
-        
-        # Extract the optimal lambda value
-        optimal_lambda <- cv_fit$lambda.min
-        
-        # Predict using the optimal lambda
-        predictions <- predict(cv_fit, newx = X_mat, s = "lambda.min")
-        
-        # Calculate MSE
-        MSE <- mean((y - predictions)^2)
-        
-        # Calculate R2
-        SS_res <- sum((y - predictions)^2)
-        SS_tot <- sum((y - mean(y))^2)
-        R2 <- 1 - (SS_res / SS_tot)
-        
-        # Results
-        results <- rbind(results, data.frame(method = "Ridge", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, R2 = R2, Lambda = optimal_lambda, MSE = MSE, stringsAsFactors = FALSE))
-        
-        ########################
-        
-        # LASSO
-        cv_fit_lasso <- cv.glmnet(X_mat, y, alpha = 1)
-        
-        # Extract the optimal lambda value
-        optimal_lambda_lasso <- cv_fit_lasso$lambda.min
-        
-        # Predict using the optimal lambda
-        predictions_lasso <- predict(cv_fit_lasso, newx = X_mat, s = "lambda.min")
-        
-        # Calculate MSE
-        MSE_lasso <- mean((y - predictions_lasso)^2)
-        
-        # Calculate R2
-        SS_res_lasso <- sum((y - predictions_lasso)^2)
-        SS_tot_lasso <- sum((y - mean(y))^2)
-        R2_lasso <- 1 - (SS_res_lasso / SS_tot_lasso)
-        
-        # Results
-        results <- rbind(results, data.frame(method = "LASSO", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, R2 = R2_lasso, Lambda = optimal_lambda_lasso, MSE = MSE_lasso, stringsAsFactors = FALSE))
-        
-        ############################
-        
-        # PCA on the predictor variables
-        pca_result <- prcomp(X, scale. = TRUE)
-        
-        # Determine the number of components to use based on the variance explained criterion
-        explained_variance <- summary(pca_result)$importance[2, ]
-        cumulative_variance <- cumsum(explained_variance)
-        variance_threshold <- 0.85  
-        num_components <- which(cumulative_variance >= variance_threshold)[1]
-        
-        # Regression using the selected principal components
-        # Extract scores for the components used
-        pca_scores <- pca_result$x[, 1:num_components]  
-        fit <- lm(y ~ pca_scores)
-        
-        # Predict and calculate metrics
-        predictions <- predict(fit, newdata = data.frame(pca_scores = pca_scores))
-        MSE <- mean((y - predictions)^2)
-        y_bar <- mean(y)
-        SS_tot <- sum((y - y_bar)^2)
-        SS_res <- sum((y - predictions)^2)
-        R2 <- 1 - SS_res / SS_tot
-        
-        # Results
-        results <- rbind(results, data.frame(method = "PCA", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, Lambda = NA, MSE = MSE, R2 = R2, stringsAsFactors = FALSE))
+          X <- mvrnorm(n = n, mu = rep(0, k), Sigma = Sigma)
+          epsilon <- rnorm(n, 0, sqrt(var_epsilon))
+          y <- X %*% coef_sets[[coef_set]] + epsilon
+          
+          # OLS model
+          fit <- lm(y ~ X)
+          
+          # Calculate R2 and MSE
+          R2 <- summary(fit)$r.squared
+          predictions <- predict(fit, newdata = data.frame(X = X))
+          MSE <- mean((y - predictions)^2)
+          
+          # Results
+          results <- rbind(results, data.frame(method = "OLS", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, R2 = R2, Lambda = NA, MSE = MSE, stringsAsFactors = FALSE))
+          
+          #############
+          
+          # Ridge regression model with cross-validation
+          X_mat <- as.matrix(X) 
+          cv_fit <- cv.glmnet(X_mat, y, alpha = 0)
+          
+          # Extract the optimal lambda value
+          optimal_lambda <- cv_fit$lambda.min
+          
+          # Predict using the optimal lambda
+          predictions <- predict(cv_fit, newx = X_mat, s = "lambda.min")
+          
+          # Calculate MSE
+          MSE <- mean((y - predictions)^2)
+          
+          # Calculate R2
+          SS_res <- sum((y - predictions)^2)
+          SS_tot <- sum((y - mean(y))^2)
+          R2 <- 1 - (SS_res / SS_tot)
+          
+          # Results
+          results <- rbind(results, data.frame(method = "Ridge", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, R2 = R2, Lambda = optimal_lambda, MSE = MSE, stringsAsFactors = FALSE))
+          
+          ########################
+          
+          # LASSO
+          cv_fit_lasso <- cv.glmnet(X_mat, y, alpha = 1)
+          
+          # Extract the optimal lambda value
+          optimal_lambda_lasso <- cv_fit_lasso$lambda.min
+          
+          # Predict using the optimal lambda
+          predictions_lasso <- predict(cv_fit_lasso, newx = X_mat, s = "lambda.min")
+          
+          # Calculate MSE
+          MSE_lasso <- mean((y - predictions_lasso)^2)
+          
+          # Calculate R2
+          SS_res_lasso <- sum((y - predictions_lasso)^2)
+          SS_tot_lasso <- sum((y - mean(y))^2)
+          R2_lasso <- 1 - (SS_res_lasso / SS_tot_lasso)
+          
+          # Results
+          results <- rbind(results, data.frame(method = "LASSO", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, R2 = R2_lasso, Lambda = optimal_lambda_lasso, MSE = MSE_lasso, stringsAsFactors = FALSE))
+          
+          ############################
+          
+          # PCA on the predictor variables
+          pca_result <- prcomp(X, scale. = TRUE)
+          
+          # Determine the number of components to use based on the variance explained criterion
+          explained_variance <- summary(pca_result)$importance[2, ]
+          cumulative_variance <- cumsum(explained_variance)
+          variance_threshold <- 0.85  
+          num_components <- which(cumulative_variance >= variance_threshold)[1]
+          
+          # Regression using the selected principal components
+          # Extract scores for the components used
+          pca_scores <- pca_result$x[, 1:num_components]  
+          fit <- lm(y ~ pca_scores)
+          
+          # Predict and calculate metrics
+          predictions <- predict(fit, newdata = data.frame(pca_scores = pca_scores))
+          MSE <- mean((y - predictions)^2)
+          y_bar <- mean(y)
+          SS_tot <- sum((y - y_bar)^2)
+          SS_res <- sum((y - predictions)^2)
+          R2 <- 1 - SS_res / SS_tot
+          
+          # Results
+          results <- rbind(results, data.frame(method = "PCA", case = case, rho = rho, var_epsilon = var_epsilon, coef_set = coef_set, Lambda = NA, MSE = MSE, R2 = R2, stringsAsFactors = FALSE))
         }
       }
     }
